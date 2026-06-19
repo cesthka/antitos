@@ -238,10 +238,11 @@ bot = commands.Bot(command_prefix=".", intents=intents, help_command=None)
 # ==============================================================================
 
 def est_exempt(member: discord.Member) -> bool:
-    """Les admins, le buyer/owners et les roles exemptes echappent a l'automod."""
+    """Seuls le buyer/owners du bot echappent a l'auto-moderation.
+    (Les administrateurs Discord sont moderes comme tout le monde.)
+    Les roles ajoutes via .exempt restent epargnes si tu en mets, mais par
+    defaut la liste est vide : donc par defaut, seuls les owners sont exemptes."""
     if est_owner(member.id):
-        return True
-    if member.guild_permissions.administrator or member.guild_permissions.manage_guild:
         return True
     return any(r.id in EXEMPT_ROLES for r in member.roles)
 
