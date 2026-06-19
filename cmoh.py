@@ -408,8 +408,88 @@ async def on_command_error(ctx, error):
 
 
 # ==============================================================================
+#  MENU D'AIDE
+# ==============================================================================
+
+class AuthorView(discord.ui.View):
+    def __init__(self, author, timeout=180):
+        super().__init__(timeout=timeout)
+        self.author = author
+
+    async def interaction_check(self, interaction):
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("Ce menu n'est pas pour toi 🙂", ephemeral=True)
+            return False
+        return True
+
+
+HELP_CATEGORIES = {
+    "🛡️ Moderation": [
+        (".automod", "Affiche l'etat des filtres et des seuils."),
+        (".toggle <filtre> on/off", "Active/desactive un filtre (invites, scam, badwords, mentions, flood, caps, grabber, selling, links)."),
+        (".setseuil <cle> <valeur>", "Regle un seuil (mentions_max, flood_msgs, timeout_min, warn_delete...)."),
+        (".modlog #salon", "Definit le salon des logs de moderation."),
+    ],
+    "🚫 Exemptions & mots": [
+        (".exempt @role", "Exempte un role de l'auto-moderation."),
+        (".unexempt @role", "Retire l'exemption d'un role."),
+        (".badword add/remove/list <mot>", "Gere la liste de mots interdits personnalisee."),
+    ],
+    "⚖️ Infractions": [
+        (".warnings @membre", "Voir le nombre d'infractions d'un membre."),
+        (".clearwarnings @membre", "Remet ses infractions a zero."),
+    ],
+    "👑 Gestion": [
+        (".owner @membre", "Ajoute un owner (buyer uniquement)."),
+        (".unowner @membre", "Retire un owner (buyer uniquement)."),
+        (".owners", "Affiche le buyer et les owners."),
+    ],
+}
+
+
+def embed_help_accueil():
+    e = discord.Embed(title="📖 Aide — Bot de protection",
+                      description="Auto-moderation stricte basee sur les regles de Discord.\n"
+                                  "Choisis une categorie dans le menu ci-dessous.",
+                      color=discord.Color.blurple())
+    e.add_field(name="Categories", value="\n".join(f"• {c}" for c in HELP_CATEGORIES), inline=False)
+    e.set_footer(text="Commandes reservees au buyer / aux owners.")
+    return e
+
+
+def embed_help_categorie(cat):
+    e = discord.Embed(title=f"📖 Aide — {cat}", color=discord.Color.blurple())
+    for nom, desc in HELP_CATEGORIES[cat]:
+        e.add_field(name=nom, value=desc, inline=False)
+    return e
+
+
+class HelpSelect(discord.ui.Select):
+    def __init__(self):
+        opts = [discord.SelectOption(label="Accueil", value="accueil", emoji="🏠")]
+        opts += [discord.SelectOption(label=c, value=c) for c in HELP_CATEGORIES]
+        super().__init__(placeholder="Choisis une categorie…", options=opts)
+
+    async def callback(self, interaction):
+        v = self.values[0]
+        embed = embed_help_accueil() if v == "accueil" else embed_help_categorie(v)
+        await interaction.response.edit_message(embed=embed, view=self.view)
+
+
+class HelpView(AuthorView):
+    def __init__(self, author):
+        super().__init__(author)
+        self.add_item(HelpSelect())
+
+
+# ==============================================================================
 #  COMMANDES (administrateurs)
 # ==============================================================================
+
+@bot.command(name="help")
+async def help_cmd(ctx):
+    await ctx.send(embed=embed_help_accueil(), view=HelpView(ctx.author))
+
 
 @bot.command(name="modlog")
 @check_owner()
